@@ -57,26 +57,28 @@ def fig3():
         rows = list(csv.DictReader(f))
     k = np.array([int(r["cycle"]) for r in rows])
     load = np.array([float(r["load_kg"]) for r in rows])
-    fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(8.5 * CM, 6.6 * CM), sharex=True,
+    long = len(k) > 20                                  # long scenario: full-width figure, no markers
+    fig, (ax0, ax1) = plt.subplots(2, 1, figsize=((17.0 if long else 8.5) * CM, 6.6 * CM), sharex=True,
                                    gridspec_kw=dict(height_ratios=[1, 2.6], hspace=0.08))
-    ax0.bar(k, load, width=0.62, color="#c3c2b7", edgecolor="none")
+    ax0.bar(k, load, width=0.8 if long else 0.62, color="#c3c2b7", edgecolor="none")
     ax0.axhline(p.LOAD_TUNE, color=INK2, lw=0.6, ls=(0, (2, 2)))
-    ax0.text(k[-1] + 0.45, p.LOAD_TUNE, "tuning\n600 kg", va="center", ha="left", fontsize=6.5, color=INK2)
+    ax0.text(k[-1] + 0.8, p.LOAD_TUNE, "tuning\n600 kg", va="center", ha="left", fontsize=6.5, color=INK2)
     ax0.set_ylim(0, 900)
     ax0.set_yticks([0, 400, 800])
     ax0.set_ylabel("Load (kg)")
 
     for n in STRATS:
         eps = np.array([float(r[f"eps_{n}_pct"]) for r in rows])
-        ax1.plot(k, eps, color=COLOR[n], ls=LINESTYLE[n], lw=1.2, marker=MARKER[n], ms=4,
-                 mfc="white", mew=1.0, label=n, zorder=3 if n == "RL-ECMS" else 2)
+        style = dict(lw=1.0) if long else dict(lw=1.2, marker=MARKER[n], ms=4, mfc="white", mew=1.0)
+        ax1.plot(k, eps, color=COLOR[n], ls=LINESTYLE[n], label=n,
+                 zorder=3 if n == "RL-ECMS" else 2, **style)
     ax1.axhline(0, color=INK2, lw=0.6)
     ax1.text(k[-1] + 0.5, 0.03, "DP", va="bottom", ha="right", fontsize=6.5, color=INK2)
     top = max(float(r[f"eps_{n}_pct"]) for r in rows for n in STRATS)
-    ax1.set_ylim(min(-0.3, ax1.get_ylim()[0]), top * 1.32)
+    ax1.set_ylim(min(-0.3, ax1.get_ylim()[0]), top * 1.25)
     ax1.set_xlabel("Working cycle $k$")
     ax1.set_ylabel(r"$\varepsilon_k$ (%)")
-    ax1.set_xticks(k)
+    ax1.set_xticks(np.arange(10, k[-1] + 1, 10) if long else k)
     ax1.set_xlim(0.4, k[-1] + 0.6)
     ax1.grid(axis="y", color=GRID, lw=0.5)
     ax1.legend(ncol=3, frameon=False, loc="upper center", bbox_to_anchor=(0.5, 1.02),

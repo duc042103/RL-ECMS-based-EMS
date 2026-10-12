@@ -1,4 +1,4 @@
-"""Train the DDPG agent of RL-ECMS with random loads U(400, 800) kg in every cycle.
+"""Train the DDPG agent of RL-ECMS on patterned loads (same load for 8-12 cycles, levels in [400, 800] kg).
 
 State  x_t = [P_dem, P_dem_avg, SoC]                                  (Eq. 5)
 Action a_t = SoC_ref(t)
@@ -12,6 +12,7 @@ but it removes most of the uncontrollable variance from the critic target.
 """
 import argparse
 import csv
+import json
 import sys
 import time
 from pathlib import Path
@@ -28,22 +29,32 @@ from ems.strategies import (ACTOR_FILE, RESULTS, action_to_soc_ref, load_tuning,
                             normalise, rl_core)
 
 LAMBDA = 5.0e5            # J, SoC penalty weight in Eq. (6)
+GAMMA = 0.995             # discount per 1 s agent step (horizon ~200 s, longer than one load block)
 REWARD_SCALE = 1.0e-4     # reward normalisation for the critic
-EPISODES = 600
-CYCLES_PER_EPISODE = p.N_TEST_CYCLES
+EPISODES = 400
+CYCLES_PER_EPISODE = p.N_TRAIN_CYCLES
+UPDATE_EVERY = 2          # agent steps per gradient update
 CRITIC_WARMUP = 10_000    # agent steps with critic-only updates (actor frozen at its initial policy)
 NOISE_START, NOISE_END = 0.15, 0.02
 VAL_SEEDS = (101, 102, 103)
 VAL_EVERY = 10
 
 
+VAL_CACHE = RESULTS / "val_cache.json"
+
+
 def validation_set():
+    """Validation scenarios (same length as the test); DP references are cached on disk."""
+    cache = json.loads(VAL_CACHE.read_text()) if VAL_CACHE.exists() else {}
     out = []
     for seed in VAL_SEEDS:
-        sc = S.make_scenario(S.random_loads(CYCLES_PER_EPISODE, np.random.default_rng(seed)))
-        s_bar = metrics.soc_value_factor(sc)
-        e_dp = metrics.total_energy(dp.solve(sc), sc, s_bar)
-        out.append((sc, s_bar, e_dp))
+        sc = S.make_scenario(S.patterned_loads(p.N_TEST_CYCLES, np.random.default_rng(seed)))
+        key = f"{seed}_{p.N_TEST_CYCLES}_{sc.loads.sum():.3f}"
+        if key not in cache:
+            s_bar = metrics.soc_value_factor(sc)
+            cache[key] = (s_bar, metrics.total_energy(dp.solve(sc), sc, s_bar))
+            VAL_CACHE.write_text(json.dumps(cache, indent=1))
+        out.append((sc, *cache[key]))
     return out
 
 
@@ -61,12 +72,18 @@ def main():
     ap.add_argument("--lam", type=float, default=LAMBDA)
     ap.add_argument("--no-baseline", action="store_true")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--gamma", type=float, default=GAMMA)
     ap.add_argument("--out", default=str(ACTOR_FILE))
+    ap.add_argument("--episodes", type=int, default=EPISODES)
+    ap.add_argument("--prepare-val", action="store_true", help="only compute the validation cache")
     args = ap.parse_args()
+    if args.prepare_val:
+        validation_set()
+        return
     actor_file = Path(args.out)
     tuning = load_tuning()
     core = rl_core(tuning)
-    agent = DDPG(obs_dim=3, seed=args.seed, lr_actor=3e-5, lr_critic=3e-4, batch=256)
+    agent = DDPG(obs_dim=3, seed=args.seed, gamma=args.gamma, lr_actor=3e-5, lr_critic=3e-4, batch=256)
     rng = np.random.default_rng(p.TRAIN_SEED)
     val = validation_set()
     best = validate(agent, core, val)
@@ -74,14 +91,15 @@ def main():
     np.savez(actor_file, **agent.state_dict())
 
     rows, steps, t0 = [], 0, time.time()
-    for ep in range(EPISODES):
-        sc = S.make_scenario(S.random_loads(CYCLES_PER_EPISODE, rng))
+    log_file = actor_file.with_name(actor_file.stem + "_log.csv")
+    for ep in range(args.episodes):
+        sc = S.make_scenario(S.patterned_loads(CYCLES_PER_EPISODE, rng))
         env = ExcavatorEnv(sc, core)
         base = np.zeros(sc.n_steps) if args.no_baseline else \
             candidates(sc.p_dem)["mdot"][:, 1] * p.DT * p.Q_LHV       # engine-only fuel energy
         obs = env.reset(rng.uniform(0.55, 0.65))
         s = normalise(obs)
-        noise = NOISE_START + (NOISE_END - NOISE_START) * ep / (EPISODES - 1)
+        noise = NOISE_START + (NOISE_END - NOISE_START) * ep / (args.episodes - 1)
         ret, losses = 0.0, []
         while not env.done:
             a = agent.act(s, noise)
@@ -91,7 +109,7 @@ def main():
             s2 = normalise(obs2)
             agent.buf.add(s, a, r, s2, 0.0)        # time-limit end: bootstrap (not terminal)
             s, ret, steps = s2, ret + r, steps + 1
-            if steps >= agent.batch:
+            if steps >= agent.batch and steps % UPDATE_EVERY == 0:
                 losses.append(agent.update(train_actor=steps >= CRITIC_WARMUP))
         row = dict(episode=ep + 1, ret=ret, soc_end=env.soc, noise=noise,
                    critic_loss=float(np.mean(losses)) if losses else np.nan, val_ratio=np.nan)
@@ -104,11 +122,11 @@ def main():
             print(f"ep {ep + 1:4d}  return {ret:8.2f}  SoC_end {env.soc:.3f}  "
                   f"val {vr * 100:.3f} %  best {best * 100:.3f} %  ({time.time() - t0:.0f} s)")
         rows.append(row)
-
-    with open(actor_file.with_name(actor_file.stem + "_log.csv"), "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0]))
-        w.writeheader()
-        w.writerows(rows)
+        if (ep + 1) % VAL_EVERY == 0 or ep + 1 == args.episodes:
+            with open(log_file, "w", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=list(rows[0]))
+                w.writeheader()
+                w.writerows(rows)
     print(f"best validation ratio to DP: {best * 100:.3f} %  -> {actor_file.name}")
 
 

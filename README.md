@@ -32,9 +32,10 @@ Every parameter is in `excavator/params.py`, tagged **GIVEN** (from earlier work
 
 ## Scenario and metric
 
-* Test: 12 cycles (seed 2026), load per cycle U(400, 800) kg, lift 0.13 m/s, lower 0.10 m/s.
+* Test: 80 cycles (~18 min, seed 2026). Patterned load: a level drawn from U(400, 800) kg is
+  held for 8-12 consecutive cycles, then changes by at least 150 kg. Lift 0.13 m/s, lower 0.10 m/s.
 * ECMS and A-ECMS tuned on 600 kg cycles (charge-sustaining requirement |dSoC| <= 0.02);
-  RL trained on random loads (other seeds); nothing is retuned for the test.
+  RL trained on patterned loads (other seeds, 30-cycle episodes); nothing is retuned for the test.
 * `E_k = Q_lhv m_fuel,k + s_bar dSoC_k C_bat V_oc`; `s_bar` is the marginal fuel cost of
   battery energy obtained from DP on the same scenario (see `ems/metrics.py`).
 
@@ -42,20 +43,25 @@ Every parameter is in `excavator/params.py`, tagged **GIVEN** (from earlier work
 
 `tuning.json`, `ddpg_actor.npz` (+ `ddpg_actor_log.csv`), `summary.json`, `table1.md`,
 `per_cycle.csv`, `test_logs.npz`, `figures/Fig3_per_cycle_deviation.{png,svg}`,
-`figures/Fig4_operating_points.{png,svg}`. `results/variants/` keeps the three DDPG
-training configurations that were compared on the validation scenarios.
+`figures/Fig4_operating_points.{png,svg}`, `val_cache.json` (DP references of the
+validation scenarios). `results/variants/` keeps the nine DDPG training configurations that
+were compared on the validation scenarios. `results/archive_iid12/` keeps the first study
+(12 cycles, independent random load per cycle).
 
-## Results (test scenario)
+## Results (test scenario, 80 cycles, patterned load)
 
 | Criteria | ECMS | A-ECMS [2] | RL-ECMS | DP |
 |---|---|---|---|---|
-| Total consumed energy (kJ) | 1197.3 | 1197.2 | 1195.2 | 1188.7 |
-| Reduction by RL-ECMS (%) | 0.18 | 0.17 | – | – |
-| Ratio to DP (%) | 99.28 | 99.29 | 99.46 | 100 |
+| Total consumed energy (kJ) | 7757.3 | 7745.6 | 7720.3 | 7677.3 |
+| Reduction by RL-ECMS (%) | 0.48 | 0.33 | – | – |
+| Ratio to DP (%) | 98.97 | 99.12 | 99.44 | 100 |
 
-Max / mean |eps_k|: ECMS 1.78 / 0.74 %, A-ECMS 1.17 / 0.73 %, RL-ECMS 1.24 / 0.55 %.
-Final SoC: ECMS 0.518, A-ECMS 0.580, RL-ECMS 0.583, DP 0.600 (s_bar = 2.91).
+Max / mean |eps_k|: ECMS 3.36 / 1.01 %, A-ECMS 1.58 / 0.92 %, RL-ECMS 1.24 / 0.58 %.
+Final SoC: ECMS 0.400 (limit reached at cycle 32), A-ECMS 0.580, RL-ECMS 0.601, DP 0.600.
 Paper text with these numbers: `paper/section3_results.md`.
+
+First study for comparison (12 cycles, independent load per cycle): reduction 0.18 % / 0.17 %,
+RL-ECMS 99.46 % of DP (`results/archive_iid12/`).
 
 ## Findings that shaped the setup
 
@@ -80,5 +86,12 @@ Paper text with these numbers: `paper/section3_results.md`.
 5. **DDPG training.** With the raw Eq. (6) reward the critic is dominated by the
    uncontrollable fuel of the duty cycle and the policy drifts below A-ECMS. Adding the
    engine-only fuel of the current demand back as a baseline (policy-invariant, exogenous)
-   gives stable learning. Three configurations were compared on validation scenarios
-   (seeds 101-103) and the best (lambda = 5e5, baseline) was used for the test.
+   gives stable learning. Nine configurations (gamma 0.99/0.995, lambda 5e4-1e6, two seeds)
+   were compared on three 80-cycle validation scenarios (seeds 101-103); the best
+   (gamma = 0.995, lambda = 5e5, seed 0: 99.43 % of DP) was used for the test. Seed-to-seed
+   spread is about 0.1 percentage point.
+6. **Patterned load.** Holding the load for 8-12 cycles widens the room for improvement:
+   fixed-s ECMS drains the battery to its limit and loses up to 3.4 % per cycle in heavy
+   blocks. RL-ECMS's gain over A-ECMS is not a constant SoC_ref offset (A-ECMS with any fixed
+   SoC_ref in 0.60-0.63 stays at 99.10-99.15 %); it comes from lowering SoC_ref while lifting
+   light loads, so the EMG assists about as much as in DP (0.99 kW vs 1.00 kW; A-ECMS 0.26 kW).

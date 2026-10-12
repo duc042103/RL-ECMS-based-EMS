@@ -1,8 +1,9 @@
-"""Working-cycle generator: boom lift / hold / lower with a random load per cycle.
+"""Working-cycle generator: boom lift / hold / lower with a patterned random load.
 
 One cycle = hold at bottom (digging) -> lift (0.13 m/s) -> hold at top (dumping)
 -> lower (0.1 m/s, no regeneration). Speeds are the same in every cycle; only the
-load mass changes from cycle to cycle.
+load mass changes. The load follows a pattern: it stays at the same level for 8-12
+consecutive cycles (same material), then jumps to a new level in [400, 800] kg.
 """
 from dataclasses import dataclass
 
@@ -89,12 +90,27 @@ def make_scenario(loads):
 
 
 def random_loads(n_cycles, rng):
+    """Independent load per cycle (used in the first study, kept for comparison)."""
     return rng.uniform(p.LOAD_MIN, p.LOAD_MAX, size=n_cycles)
 
 
+def patterned_loads(n_cycles, rng):
+    """Block-wise persistent load: level ~ U(400, 800) held for 8-12 consecutive cycles."""
+    loads, level = [], None
+    while len(loads) < n_cycles:
+        new = rng.uniform(p.LOAD_MIN, p.LOAD_MAX)
+        while level is not None and abs(new - level) < p.LOAD_MIN_JUMP:
+            new = rng.uniform(p.LOAD_MIN, p.LOAD_MAX)
+        level = new
+        n = int(rng.integers(p.LOAD_BLOCK_MIN, p.LOAD_BLOCK_MAX + 1))
+        jitter = 1.0 + p.LOAD_JITTER * rng.uniform(-1.0, 1.0, size=n)
+        loads.extend(np.clip(level * jitter, p.LOAD_MIN, p.LOAD_MAX))
+    return np.array(loads[:n_cycles])
+
+
 def test_scenario():
-    return make_scenario(random_loads(p.N_TEST_CYCLES, np.random.default_rng(p.TEST_SEED)))
+    return make_scenario(patterned_loads(p.N_TEST_CYCLES, np.random.default_rng(p.TEST_SEED)))
 
 
-def constant_scenario(load, n_cycles=p.N_TEST_CYCLES):
+def constant_scenario(load, n_cycles=p.N_TUNE_CYCLES):
     return make_scenario(np.full(n_cycles, load))

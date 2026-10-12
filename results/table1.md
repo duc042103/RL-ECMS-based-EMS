@@ -1,5 +1,5 @@
 | Criteria | ECMS | A-ECMS [2] | RL-ECMS | DP |
 |---|---|---|---|---|
-| Total consumed energy (kJ) | 1197.3 | 1197.2 | 1195.2 | 1188.7 |
-| Reduction by RL-ECMS (%) | 0.18 | 0.17 | – | – |
-| Ratio to DP (%) | 99.28 | 99.29 | 99.46 | 100 |
+| Total consumed energy (kJ) | 7757.3 | 7745.6 | 7720.3 | 7677.3 |
+| Reduction by RL-ECMS (%) | 0.48 | 0.33 | – | – |
+| Ratio to DP (%) | 98.97 | 99.12 | 99.44 | 100 |

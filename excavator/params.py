@@ -22,9 +22,15 @@ T_HOLD_TOP = 2.0              # s, hold at top (dumping) (ASSUMED)
 T_HOLD_BOTTOM = 3.0           # s, hold at bottom (digging / loading) (ASSUMED)
 LOAD_MIN, LOAD_MAX = 400.0, 800.0   # kg, load mass per cycle (GIVEN)
 LOAD_TUNE = 600.0             # kg, tuning load of ECMS / A-ECMS (GIVEN)
-N_TEST_CYCLES = 12            # cycles in the test scenario (GIVEN, user decision)
+N_TUNE_CYCLES = 12            # cycles of the constant-load tuning scenario
+N_TEST_CYCLES = 80            # cycles in the test scenario, ~18 min of operation (user decision)
+N_TRAIN_CYCLES = 30           # cycles per training episode
 TEST_SEED = 2026              # seed of the test load sequence (GIVEN, user decision)
 TRAIN_SEED = 1                # seed of training load sequences (differs from test)
+# patterned load: the level persists (same material) for a block of cycles, then changes
+LOAD_BLOCK_MIN, LOAD_BLOCK_MAX = 8, 12  # consecutive cycles with the same load (user decision)
+LOAD_JITTER = 0.0             # -, cycle-to-cycle variation inside a block (same load: none)
+LOAD_MIN_JUMP = 150.0         # kg, minimum change of level between blocks (ASSUMED)
 
 # ---------------------------------------------------------------- boom cylinder / load
 BORE = 0.050                  # m (GIVEN)
