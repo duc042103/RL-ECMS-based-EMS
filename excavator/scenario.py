@@ -2,8 +2,8 @@
 
 One cycle = hold at bottom (digging) -> lift (0.13 m/s) -> hold at top (dumping)
 -> lower (0.1 m/s, no regeneration). Speeds are the same in every cycle; only the
-load mass changes. The load follows a pattern: it stays at the same level for 8-12
-consecutive cycles (same material), then jumps to a new level in [400, 800] kg.
+load mass changes. The load is periodic with strong cycle-to-cycle variation:
+m_k = 600 + 170 sin(2 pi k / P + phi) + U(-60, 60) kg, P = 5-8 cycles, clipped to [400, 800] kg.
 """
 from dataclasses import dataclass
 
@@ -94,7 +94,7 @@ def random_loads(n_cycles, rng):
     return rng.uniform(p.LOAD_MIN, p.LOAD_MAX, size=n_cycles)
 
 
-def patterned_loads(n_cycles, rng):
+def block_loads(n_cycles, rng):
     """Block-wise persistent load: level ~ U(400, 800) held for 8-12 consecutive cycles."""
     loads, level = [], None
     while len(loads) < n_cycles:
@@ -106,6 +106,19 @@ def patterned_loads(n_cycles, rng):
         jitter = 1.0 + p.LOAD_JITTER * rng.uniform(-1.0, 1.0, size=n)
         loads.extend(np.clip(level * jitter, p.LOAD_MIN, p.LOAD_MAX))
     return np.array(loads[:n_cycles])
+
+
+def periodic_loads(n_cycles, rng):
+    """Periodic trend (period 5-8 cycles, random phase) plus strong random variation per cycle."""
+    period = int(rng.integers(p.LOAD_PERIOD_MIN, p.LOAD_PERIOD_MAX + 1))
+    phase = rng.uniform(0.0, 2 * np.pi)
+    k = np.arange(n_cycles)
+    m = (p.LOAD_MEAN + p.LOAD_AMPL * np.sin(2 * np.pi * k / period + phase)
+         + rng.uniform(-p.LOAD_NOISE, p.LOAD_NOISE, n_cycles))
+    return np.clip(m, p.LOAD_MIN, p.LOAD_MAX)
+
+
+patterned_loads = periodic_loads      # load pattern used for training, validation and test
 
 
 def test_scenario():

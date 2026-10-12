@@ -27,10 +27,16 @@ N_TEST_CYCLES = 80            # cycles in the test scenario, ~18 min of operatio
 N_TRAIN_CYCLES = 30           # cycles per training episode
 TEST_SEED = 2026              # seed of the test load sequence (GIVEN, user decision)
 TRAIN_SEED = 1                # seed of training load sequences (differs from test)
-# patterned load: the level persists (same material) for a block of cycles, then changes
-LOAD_BLOCK_MIN, LOAD_BLOCK_MAX = 8, 12  # consecutive cycles with the same load (user decision)
+# block load (second study): the same load for 8-12 consecutive cycles, then a new level
+LOAD_BLOCK_MIN, LOAD_BLOCK_MAX = 8, 12  # consecutive cycles with the same load
 LOAD_JITTER = 0.0             # -, cycle-to-cycle variation inside a block (same load: none)
-LOAD_MIN_JUMP = 150.0         # kg, minimum change of level between blocks (ASSUMED)
+LOAD_MIN_JUMP = 150.0         # kg, minimum change of level between blocks
+# periodic load (current study, user decision): periodic trend + strong cycle-to-cycle variation
+#   m_k = 600 + A sin(2 pi k / P + phi) + U(-noise, noise), clipped to [400, 800] kg
+LOAD_MEAN = 600.0             # kg, centre of the periodic trend
+LOAD_AMPL = 170.0             # kg, amplitude of the periodic trend (ASSUMED)
+LOAD_NOISE = 60.0             # kg, random variation added to every cycle (ASSUMED)
+LOAD_PERIOD_MIN, LOAD_PERIOD_MAX = 5, 8   # cycles per load period, drawn per scenario (ASSUMED)
 
 # ---------------------------------------------------------------- boom cylinder / load
 BORE = 0.050                  # m (GIVEN)
