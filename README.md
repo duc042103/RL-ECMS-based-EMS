@@ -32,10 +32,12 @@ Every parameter is in `excavator/params.py`, tagged **GIVEN** (from earlier work
 
 ## Scenario and metric
 
-* Test: 80 cycles (~18 min, seed 2026). Patterned load: a level drawn from U(400, 800) kg is
-  held for 8-12 consecutive cycles, then changes by at least 150 kg. Lift 0.13 m/s, lower 0.10 m/s.
+* Test: 200 cycles (~47 min, seed 2026). The load m(t) varies continuously in time, also within
+  a cycle: periodic trend of 3-5 cycles + smooth random variation (periods 2-15 s), softly
+  saturated into 400-800 kg; one periodic 50-cycle set is repeated 4 times. The load stays on the
+  boom during holds. Lift 0.13 m/s, lower 0.10 m/s, raised-cosine ramps of 0.6 s.
 * ECMS and A-ECMS tuned on 600 kg cycles (charge-sustaining requirement |dSoC| <= 0.02);
-  RL trained on patterned loads (other seeds, 30-cycle episodes); nothing is retuned for the test.
+  RL trained on continuous loads (other seeds, 30-cycle episodes); nothing is retuned for the test.
 * `E_k = Q_lhv m_fuel,k + s_bar dSoC_k C_bat V_oc`; `s_bar` is the marginal fuel cost of
   battery energy obtained from DP on the same scenario (see `ems/metrics.py`).
 
@@ -43,33 +45,27 @@ Every parameter is in `excavator/params.py`, tagged **GIVEN** (from earlier work
 
 `tuning.json`, `ddpg_actor.npz` (+ `ddpg_actor_log.csv`), `summary.json`, `table1.md`,
 `per_cycle.csv`, `test_logs.npz`, `figures/Fig3_per_cycle_deviation.{png,svg}`,
-`figures/Fig4_operating_points.{png,svg}`, `val_cache.json` (DP references of the
-validation scenarios). `results/variants/` keeps the nine DDPG training configurations that
-were compared on the validation scenarios. `results/archive_iid12/` keeps the first study
-(12 cycles, independent random load per cycle).
+`figures/Fig4_operating_points.{png,svg}`, `figures/load_profile_test.png` (load preview),
+`val_cache/` (DP references of the validation scenarios). `results/variants/` keeps the three
+DDPG configurations compared on the validation scenarios. Earlier studies:
+`results/archive_iid12/` (12 cycles, independent load per cycle), `results/archive_block80/` and
+`results/variants_block80/` (80 cycles, same load for 8-12 cycles).
 
-> **In progress:** the load now varies continuously in time, also within a cycle
-> (periodic trend of 3-5 cycles + smooth random variation with periods of 2-15 s, softly
-> saturated into 400-800 kg; one periodic 50-cycle set repeated 4 times = 200 cycles). The load
-> stays on the boom during holds (the pump makes up leakage at holding pressure) and the speed
-> ramps are smooth (raised cosine, 0.6 s). Preview: `results/figures/load_profile_test.png`
-> (`scripts/plot_load.py`). Retuning, training and the test evaluation wait for approval of this
-> profile. The results below are from the block-load study (`results/archive_block80/`).
-
-## Results (test scenario, 80 cycles, block load)
+## Results (test scenario, 200 cycles, continuous load)
 
 | Criteria | ECMS | A-ECMS [2] | RL-ECMS | DP |
 |---|---|---|---|---|
-| Total consumed energy (kJ) | 7757.3 | 7745.6 | 7720.3 | 7677.3 |
-| Reduction by RL-ECMS (%) | 0.48 | 0.33 | – | – |
-| Ratio to DP (%) | 98.97 | 99.12 | 99.44 | 100 |
+| Total consumed energy (kJ) | 21155.9 | 21041.5 | 20987.6 | 20888.0 |
+| Reduction by RL-ECMS (%) | 0.80 | 0.26 | – | – |
+| Ratio to DP (%) | 98.73 | 99.27 | 99.53 | 100 |
 
-Max / mean |eps_k|: ECMS 3.36 / 1.01 %, A-ECMS 1.58 / 0.92 %, RL-ECMS 1.24 / 0.58 %.
-Final SoC: ECMS 0.400 (limit reached at cycle 32), A-ECMS 0.580, RL-ECMS 0.601, DP 0.600.
+Max / mean |eps_k|: ECMS 3.43 / 1.22 %, A-ECMS 1.37 / 0.75 %, RL-ECMS 1.47 / 0.49 %.
+Final SoC: ECMS 0.400 (limit reached at cycle 36), A-ECMS 0.580, RL-ECMS 0.608, DP 0.600.
 Paper text with these numbers: `paper/section3_results.md`.
 
-First study for comparison (12 cycles, independent load per cycle): reduction 0.18 % / 0.17 %,
-RL-ECMS 99.46 % of DP (`results/archive_iid12/`).
+Earlier studies for comparison (reduction vs ECMS / A-ECMS, RL-ECMS ratio to DP):
+12 cycles with independent load per cycle 0.18 % / 0.17 %, 99.46 %;
+80 cycles with block load 0.48 % / 0.33 %, 99.44 %.
 
 ## Findings that shaped the setup
 
@@ -98,8 +94,10 @@ RL-ECMS 99.46 % of DP (`results/archive_iid12/`).
    were compared on three 80-cycle validation scenarios (seeds 101-103); the best
    (gamma = 0.995, lambda = 5e5, seed 0: 99.43 % of DP) was used for the test. Seed-to-seed
    spread is about 0.1 percentage point.
-6. **Patterned load.** Holding the load for 8-12 cycles widens the room for improvement:
+6. **Patterned / continuous load.** Holding the load for 8-12 cycles widens the room for improvement:
    fixed-s ECMS drains the battery to its limit and loses up to 3.4 % per cycle in heavy
    blocks. RL-ECMS's gain over A-ECMS is not a constant SoC_ref offset (A-ECMS with any fixed
    SoC_ref in 0.60-0.63 stays at 99.10-99.15 %); it comes from lowering SoC_ref while lifting
    light loads, so the EMG assists about as much as in DP (0.99 kW vs 1.00 kW; A-ECMS 0.26 kW).
+   The same holds for the continuous load (200 cycles): light lifts 1.00 kW (DP 0.93 kW, A-ECMS
+   0.15 kW); A-ECMS with any fixed SoC_ref in 0.60-0.63 stays at 99.27 %.

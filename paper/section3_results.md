@@ -1,45 +1,49 @@
 # Section 3 – Results and Discussion (numbers from the simulation)
 
 Source: `results/summary.json`, `results/table1.md`, `results/per_cycle.csv`.
-Test scenario: 80 cycles (~18 min), seed 2026; the load is held for 8–12 consecutive cycles,
-then jumps to a new level: 472 / 787 / 405 / 779 / 476 / 718 / 567 / 405 / 618 kg.
+Test scenario: 200 working cycles (~47 min), seed 2026. The load varies continuously in time,
+also within a cycle (periodic trend of 3–5 cycles plus smooth random variation with periods of
+2–15 s, 407–795 kg); one 50-cycle set is repeated 4 times. Preview:
+`results/figures/load_profile_test.png`.
 
 ## Setup paragraph
 
-> All components of the hybrid excavator are modeled in Python. The test scenario concatenates 80 working cycles (about 18 min), in which the load is kept constant for 8–12 consecutive cycles and then changed to a new random level between 400 and 800 kg, while the lifting and lowering speeds are kept constant. ECMS and A-ECMS are tuned at 600 kg. The consumed energy includes the fuel energy and the equivalent energy of the SoC change, converted with the marginal fuel cost of battery energy obtained from DP.
+> All components of the hybrid excavator are modeled in Python. The test scenario consists of 200 working cycles (about 47 min) in which the load varies continuously between 400 and 800 kg, also during lifting, while the lifting and lowering speeds are kept constant. ECMS and A-ECMS are tuned at 600 kg. The consumed energy includes the fuel energy and the equivalent energy of the SoC change, converted with the marginal fuel cost of battery energy obtained from DP.
 
-## Table 1. Comparison of energy consumption under varying loads
+## Table 1. Comparison of energy consumption under continuously varying loads
 
 | Criteria | ECMS | A-ECMS [2] | RL-ECMS | DP |
 |---|---|---|---|---|
-| Total consumed energy (kJ) | 7757.3 | 7745.6 | 7720.3 | 7677.3 |
-| Reduction by RL-ECMS (%) | 0.48 | 0.33 | – | – |
-| Ratio to DP (%) | 98.97 | 99.12 | 99.44 | 100 |
+| Total consumed energy (kJ) | 21155.9 | 21041.5 | 20987.6 | 20888.0 |
+| Reduction by RL-ECMS (%) | 0.80 | 0.26 | – | – |
+| Ratio to DP (%) | 98.73 | 99.27 | 99.53 | 100 |
 
 ## Discussion (2 short paragraphs)
 
-> Table 1 and Fig. 3 compare the energy consumption of the strategies over this scenario. With a fixed equivalence factor, ECMS cannot sustain the SoC: the battery reaches its lower limit at cycle 32, after which the EMG can no longer assist heavy lifts and the deviation from DP rises to 2.3–3.4 % in the heavy-load blocks. A-ECMS [2] keeps the SoC near its reference, but its deviation reaches up to 1.40 % per block and is generally larger in the light-load blocks, where the equivalence factor tuned at 600 kg restricts EMG assistance. RL-ECMS deviates less than A-ECMS in 74 of the 80 cycles and stays within 1.24 % of DP, reducing total energy consumption by 0.48 % and 0.33 % compared with ECMS and A-ECMS and reaching 99.44 % of the DP optimum.
+> Table 1 and Fig. 3 compare the energy consumption of the strategies over this scenario. With a fixed equivalence factor, ECMS cannot sustain the SoC: the battery reaches its lower limit at cycle 36, after which the EMG can no longer assist heavy lifts and the deviation from DP rises to 2.3 % on average, and up to 3.4 %, in the heavy-load cycles. A-ECMS [2] keeps the SoC near its reference with a mean deviation of 0.75 %, but its equivalence factor tuned at 600 kg restricts EMG assistance when the load is light. RL-ECMS deviates less than A-ECMS in 144 of the 200 cycles and lowers the mean deviation to 0.49 %, reducing total energy consumption by 0.80 % and 0.26 % compared with ECMS and A-ECMS and reaching 99.53 % of the DP optimum.
 >
-> Fig. 4 explains this improvement. When lifting light loads, the agent lowers the SoC reference, so the EMG supplies 0.99 kW on average, close to the 1.00 kW of DP, compared with 0.26 kW for A-ECMS, and the battery is recharged in the following hold and lowering phases. RL-ECMS therefore raises the mean ICE efficiency from 22.9 % (ECMS) and 24.5 % (A-ECMS) to 25.1 % and the mean EMG motoring efficiency of A-ECMS from 87.9 % to 90.7 %, while returning the SoC to 0.60 at the end of every load block.
+> Fig. 4 explains this improvement. When lifting light loads, the agent lowers the SoC reference, so the EMG supplies 1.00 kW on average, close to the 0.93 kW of DP, compared with 0.15 kW for A-ECMS, and the battery is recharged in the following hold and lowering phases. RL-ECMS therefore raises the mean ICE efficiency from 23.8 % (ECMS) and 25.2 % (A-ECMS) to 25.7 % and the mean EMG motoring efficiency from 88.7 % and 88.2 % to 90.6 %, while keeping the battery charge-sustaining.
 
 ## Values for the placeholders
 
 | Placeholder | Value |
 |---|---|
-| c (RL-ECMS max per-cycle deviation from DP) | 1.24 % (A-ECMS 1.58 %, ECMS 3.36 %) |
-| x (reduction vs ECMS) | 0.48 % |
-| y (reduction vs A-ECMS) | 0.33 % |
-| z (RL-ECMS ratio to DP) | 99.44 % |
+| c (RL-ECMS max per-cycle deviation from DP) | 1.47 % (A-ECMS 1.37 %, ECMS 3.43 %) – not used in the text, A-ECMS has the lower maximum |
+| x (reduction vs ECMS) | 0.80 % |
+| y (reduction vs A-ECMS) | 0.26 % |
+| z (RL-ECMS ratio to DP) | 99.53 % |
 
 ## Other sentences of the paper that must follow the new scenario
 
-* Section 2: "The agent is trained with the load mass randomized in [400, 800] kg at each episode." → "The agent is trained on load sequences in which a random load in [400, 800] kg is held for 8–12 consecutive cycles."
-* Abstract: "over a working cycle with randomly varying loads" → "over 80 working cycles with step-wise varying loads" (or similar).
+* Section 2: "The agent is trained with the load mass randomized in [400, 800] kg at each episode." → "The agent is trained on load profiles that vary continuously between 400 and 800 kg."
+* Abstract: "over a working cycle with randomly varying loads" → "over 200 working cycles with continuously varying loads".
 
 ## Checks behind the claims
 
-* The gain is not a constant SoC_ref offset: A-ECMS with any fixed SoC_ref in 0.60–0.63 stays at 99.10–99.15 % of DP (test and three validation scenarios), RL-ECMS reaches 99.42–99.44 % in all four.
-* Lifting under light loads (< 550 kg): mean SoC_ref 0.606, s = 3.07 (A-ECMS 3.25); mean P_emg RL 0.99 kW, A-ECMS 0.26 kW, DP 1.00 kW.
-* Final SoC: ECMS 0.400 (limit), A-ECMS 0.580, RL-ECMS 0.601, DP 0.600. Because ECMS ends at the SoC limit, the linear SoC correction slightly favours ECMS.
-* Remaining gap to DP (0.56 %): DP keeps the SoC near 0.79 for most of the scenario and releases it only in the last blocks, which requires knowing the whole load sequence; it also charges during the hold before lifting, which neither A-ECMS nor RL-ECMS does.
-* A-ECMS mean deviation per block: 0.23 / 0.65 / 1.06 / 0.80 / 1.02 / 0.82 / 1.40 / 1.26 / 0.88 % (blocks at 472 / 787 / 405 / 779 / 476 / 718 / 567 / 405 / 618 kg).
+* Mean deviation from DP: ECMS 1.22 %, A-ECMS 0.75 %, RL-ECMS 0.49 %. Maximum: 3.43 / 1.37 / 1.47 %.
+* Light-load cycles (< 550 kg): mean deviation A-ECMS 0.80 %, RL-ECMS 0.18 %. Heavy-load cycles (> 650 kg): A-ECMS 0.68 %, RL-ECMS 0.70 %. The gain of RL-ECMS comes from the light-load cycles.
+* Lifting under light loads (< 500 kg): mean SoC_ref 0.606, s = 2.92 (A-ECMS 3.22); mean P_emg RL 1.00 kW, A-ECMS 0.15 kW, DP 0.93 kW. Hold and lowering phases: charging RL 0.67 kW, A-ECMS 0.42 kW, DP 0.75 kW.
+* The gain is not a constant SoC_ref offset: A-ECMS with any fixed SoC_ref in 0.60–0.63 gives 99.27 % of DP on the test.
+* After cycle 36 the ECMS deviation correlates with the cycle load (r = 0.92).
+* Final SoC: ECMS 0.400 (limit), A-ECMS 0.580, RL-ECMS 0.608, DP 0.600.
+* DDPG selection (validation, 3 scenarios of 200 cycles): lambda 5e5 seed 1 99.51 %, lambda 5e5 seed 0 99.38 %, lambda 1e6 99.37 %; A-ECMS 99.27 %. Seed-to-seed spread ~0.13 percentage point.

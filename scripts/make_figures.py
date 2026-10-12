@@ -61,6 +61,9 @@ def fig3():
     fig, (ax0, ax1) = plt.subplots(2, 1, figsize=((17.0 if long else 8.5) * CM, 6.6 * CM), sharex=True,
                                    gridspec_kw=dict(height_ratios=[1, 2.6], hspace=0.08))
     ax0.bar(k, load, width=0.8 if long else 0.62, color="#c3c2b7", edgecolor="none")
+    for r in range(1, len(k) // p.LOAD_SET_CYCLES if len(k) % p.LOAD_SET_CYCLES == 0 else 0):
+        for ax in (ax0, ax1):
+            ax.axvline(r * p.LOAD_SET_CYCLES + 0.5, color=GRID, lw=0.8, zorder=0)
     ax0.axhline(p.LOAD_TUNE, color=INK2, lw=0.6, ls=(0, (2, 2)))
     ax0.text(k[-1] + 0.8, p.LOAD_TUNE, "tuning\n600 kg", va="center", ha="left", fontsize=6.5, color=INK2)
     ax0.set_ylim(0, 900)
@@ -78,7 +81,7 @@ def fig3():
     ax1.set_ylim(min(-0.3, ax1.get_ylim()[0]), top * 1.25)
     ax1.set_xlabel("Working cycle $k$")
     ax1.set_ylabel(r"$\varepsilon_k$ (%)")
-    ax1.set_xticks(np.arange(10, k[-1] + 1, 10) if long else k)
+    ax1.set_xticks(np.arange(0, k[-1] + 1, 25 if len(k) > 100 else 10) if long else k)
     ax1.set_xlim(0.4, k[-1] + 0.6)
     ax1.grid(axis="y", color=GRID, lw=0.5)
     ax1.legend(ncol=3, frameon=False, loc="upper center", bbox_to_anchor=(0.5, 1.02),
