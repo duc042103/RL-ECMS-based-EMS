@@ -4,6 +4,7 @@ One cycle = hold at bottom (digging) -> lift (0.13 m/s) -> hold at top (dumping)
 -> lower (0.1 m/s, no regeneration). Speeds are the same in every cycle; only the
 load mass changes. The load is periodic with strong cycle-to-cycle variation:
 m_k = 600 + 200 sin(2 pi k / P + phi) + U(-100, 100) kg, P = 3-5 cycles, clipped to [400, 800] kg.
+The test scenario repeats one such 50-cycle set 4 times (200 cycles).
 """
 from dataclasses import dataclass
 
@@ -118,7 +119,12 @@ def periodic_loads(n_cycles, rng):
     return np.clip(m, p.LOAD_MIN, p.LOAD_MAX)
 
 
-patterned_loads = periodic_loads      # load pattern used for training, validation and test
+def repeated_set_loads(n_cycles, rng):
+    """One random, strongly varying set of LOAD_SET_CYCLES cycles, repeated up to n_cycles."""
+    return np.resize(periodic_loads(p.LOAD_SET_CYCLES, rng), n_cycles)
+
+
+patterned_loads = repeated_set_loads  # load pattern used for training, validation and test
 
 
 def test_scenario():

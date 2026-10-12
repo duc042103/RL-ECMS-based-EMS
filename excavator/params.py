@@ -23,7 +23,7 @@ T_HOLD_BOTTOM = 3.0           # s, hold at bottom (digging / loading) (ASSUMED)
 LOAD_MIN, LOAD_MAX = 400.0, 800.0   # kg, load mass per cycle (GIVEN)
 LOAD_TUNE = 600.0             # kg, tuning load of ECMS / A-ECMS (GIVEN)
 N_TUNE_CYCLES = 12            # cycles of the constant-load tuning scenario
-N_TEST_CYCLES = 80            # cycles in the test scenario, ~18 min of operation (user decision)
+N_TEST_CYCLES = 200           # cycles in the test scenario: a 50-cycle set repeated 4 times, ~45 min (user decision)
 N_TRAIN_CYCLES = 30           # cycles per training episode
 TEST_SEED = 2026              # seed of the test load sequence (GIVEN, user decision)
 TRAIN_SEED = 1                # seed of training load sequences (differs from test)
@@ -37,6 +37,8 @@ LOAD_MEAN = 600.0             # kg, centre of the periodic trend
 LOAD_AMPL = 200.0             # kg, amplitude of the periodic trend (user: fast, strong variation)
 LOAD_NOISE = 100.0            # kg, random variation added to every cycle (user: fast, strong variation)
 LOAD_PERIOD_MIN, LOAD_PERIOD_MAX = 3, 5   # cycles per load period, drawn per scenario (user: fast variation)
+LOAD_SET_CYCLES = 50          # a random, strongly varying set of cycles ... (user decision)
+LOAD_SET_REPEATS = 4          # ... repeated 4 times in the test scenario (user decision)
 
 # ---------------------------------------------------------------- boom cylinder / load
 BORE = 0.050                  # m (GIVEN)

@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from excavator import params as p, scenario as S          # noqa: E402
 from ems import dp, metrics                                # noqa: E402
 from ems.ddpg import DDPG                                  # noqa: E402
-from ems.ecms import ExcavatorEnv, run_policy              # noqa: E402
+from ems.ecms import ExcavatorEnv                         # noqa: E402
 from excavator.powertrain import candidates               # noqa: E402
 from ems.strategies import (ACTOR_FILE, RESULTS, action_to_soc_ref, load_tuning,  # noqa: E402
                             normalise, rl_core)
@@ -37,33 +37,32 @@ UPDATE_EVERY = 2          # agent steps per gradient update
 CRITIC_WARMUP = 10_000    # agent steps with critic-only updates (actor frozen at its initial policy)
 NOISE_START, NOISE_END = 0.15, 0.02
 VAL_SEEDS = (101, 102, 103)
-VAL_EVERY = 10
+VAL_EVERY = 20
+VAL_CACHE = RESULTS / "val_cache"     # one JSON file per validation scenario: [s_bar, E_DP]
 
 
-VAL_CACHE = RESULTS / "val_cache.json"
-
-
-def validation_set():
-    """Validation scenarios (same length as the test); DP references are cached on disk."""
-    cache = json.loads(VAL_CACHE.read_text()) if VAL_CACHE.exists() else {}
+def validation_set(seeds=VAL_SEEDS):
+    """Validation scenarios (same structure as the test); DP references are cached on disk."""
+    VAL_CACHE.mkdir(exist_ok=True)
     out = []
-    for seed in VAL_SEEDS:
+    for seed in seeds:
         sc = S.make_scenario(S.patterned_loads(p.N_TEST_CYCLES, np.random.default_rng(seed)))
-        key = f"{seed}_{p.N_TEST_CYCLES}_{sc.loads.sum():.3f}"
-        if key not in cache:
+        f = VAL_CACHE / f"{seed}_{p.N_TEST_CYCLES}_{sc.loads.sum():.3f}.json"
+        if not f.exists():
             s_bar = metrics.soc_value_factor(sc)
-            cache[key] = (s_bar, metrics.total_energy(dp.solve(sc), sc, s_bar))
-            VAL_CACHE.write_text(json.dumps(cache, indent=1))
-        out.append((sc, *cache[key]))
+            f.write_text(json.dumps([s_bar, metrics.total_energy(dp.solve(sc), sc, s_bar)]))
+        out.append((sc, *json.loads(f.read_text())))
     return out
 
 
-def validate(agent, core, val):
-    pol = lambda obs: action_to_soc_ref(agent.act(normalise(obs)))   # noqa: E731
+def validate(agent, envs, val):
+    """Mean ratio to DP over the validation scenarios (environments are built once and reused)."""
     ratios = []
-    for sc, s_bar, e_dp in val:
-        log = run_policy(sc, core, pol)
-        ratios.append(e_dp / metrics.total_energy(log, sc, s_bar))
+    for env, (sc, s_bar, e_dp) in zip(envs, val):
+        obs = env.reset()
+        while not env.done:
+            obs, _, _ = env.step(action_to_soc_ref(agent.act(normalise(obs))))
+        ratios.append(e_dp / metrics.total_energy(env.log, sc, s_bar))
     return float(np.mean(ratios))
 
 
@@ -75,10 +74,10 @@ def main():
     ap.add_argument("--gamma", type=float, default=GAMMA)
     ap.add_argument("--out", default=str(ACTOR_FILE))
     ap.add_argument("--episodes", type=int, default=EPISODES)
-    ap.add_argument("--prepare-val", action="store_true", help="only compute the validation cache")
+    ap.add_argument("--prepare-val", type=int, nargs="*", help="only compute the DP cache of these seeds")
     args = ap.parse_args()
-    if args.prepare_val:
-        validation_set()
+    if args.prepare_val is not None:
+        validation_set(args.prepare_val or VAL_SEEDS)
         return
     actor_file = Path(args.out)
     tuning = load_tuning()
@@ -86,7 +85,8 @@ def main():
     agent = DDPG(obs_dim=3, seed=args.seed, gamma=args.gamma, lr_actor=3e-5, lr_critic=3e-4, batch=256)
     rng = np.random.default_rng(p.TRAIN_SEED)
     val = validation_set()
-    best = validate(agent, core, val)
+    val_envs = [ExcavatorEnv(sc, core) for sc, _, _ in val]
+    best = validate(agent, val_envs, val)
     print(f"initial actor (SoC_ref = {action_to_soc_ref(0.0):.2f}, i.e. A-ECMS): val ratio {best * 100:.3f} %")
     np.savez(actor_file, **agent.state_dict())
 
@@ -114,7 +114,7 @@ def main():
         row = dict(episode=ep + 1, ret=ret, soc_end=env.soc, noise=noise,
                    critic_loss=float(np.mean(losses)) if losses else np.nan, val_ratio=np.nan)
         if (ep + 1) % VAL_EVERY == 0:
-            vr = validate(agent, core, val)
+            vr = validate(agent, val_envs, val)
             row["val_ratio"] = vr
             if vr > best:
                 best = vr
