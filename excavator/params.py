@@ -17,7 +17,7 @@ AGENT_DT = 1.0                # s, DDPG decision interval (ASSUMED, as Li et al.
 V_UP = 0.13                   # m/s, lifting speed (GIVEN)
 V_DOWN = 0.10                 # m/s, lowering speed (GIVEN)
 STROKE = 0.45                 # m, boom cylinder working stroke per cycle (ASSUMED)
-T_RAMP = 0.3                  # s, acceleration / deceleration ramp (ASSUMED)
+T_RAMP = 0.6                  # s, smooth (raised-cosine) acceleration / deceleration ramp (ASSUMED)
 T_HOLD_TOP = 2.0              # s, hold at top (dumping) (ASSUMED)
 T_HOLD_BOTTOM = 3.0           # s, hold at bottom (digging / loading) (ASSUMED)
 LOAD_MIN, LOAD_MAX = 400.0, 800.0   # kg, load mass per cycle (GIVEN)
@@ -39,6 +39,12 @@ LOAD_NOISE = 100.0            # kg, random variation added to every cycle (user:
 LOAD_PERIOD_MIN, LOAD_PERIOD_MAX = 3, 5   # cycles per load period, drawn per scenario (user: fast variation)
 LOAD_SET_CYCLES = 50          # a random, strongly varying set of cycles ... (user decision)
 LOAD_SET_REPEATS = 4          # ... repeated 4 times in the test scenario (user decision)
+# continuous load (current study, user decision): the load changes continuously in time, also
+# within a cycle: m(t) = 600 + 200 tanh{[A sin(2 pi t / T_p + phi) + n(t)] / 200}, where n(t) is
+# smooth random noise (periods 2-15 s) and the set of 50 cycles is periodic so it repeats seamlessly
+LOAD_TREND_AMPL = 250.0       # kg, amplitude of the periodic trend before saturation (ASSUMED)
+LOAD_NOISE_STD = 70.0         # kg, std of the smooth random component (ASSUMED)
+LOAD_NOISE_TMIN, LOAD_NOISE_TMAX = 2.0, 15.0   # s, periods contained in the random component (ASSUMED)
 
 # ---------------------------------------------------------------- boom cylinder / load
 BORE = 0.050                  # m (GIVEN)
@@ -52,7 +58,8 @@ P_TANK = 0.3e6                # Pa, return-line back pressure (ASSUMED)
 DP_VALVE = 1.0e6              # Pa, control-valve pressure drop when lifting (ASSUMED)
 P_ROD_LOWER = 1.5e6           # Pa, rod-side supply pressure when lowering (no regeneration) (ASSUMED)
 P_STANDBY = 1.5e6             # Pa, standby pressure when holding (ASSUMED)
-Q_STANDBY = 1.0 / 60000       # m^3/s, standby / leakage flow when holding (ASSUMED)
+Q_STANDBY = 1.0 / 60000       # m^3/s, standby / leakage flow when holding (ASSUMED, first studies)
+Q_LEAK_HOLD = 1.5 / 60000     # m^3/s, leakage made up by the pump at holding pressure (ASSUMED)
 
 # ---------------------------------------------------------------- pump, CVT, power coupler
 PUMP_DISP = 30e-6             # m^3/rev, variable-displacement pump (GIVEN)

@@ -1,4 +1,4 @@
-"""Train the DDPG agent of RL-ECMS on patterned loads (same load for 8-12 cycles, levels in [400, 800] kg).
+"""Train the DDPG agent of RL-ECMS on continuously varying loads in [400, 800] kg.
 
 State  x_t = [P_dem, P_dem_avg, SoC]                                  (Eq. 5)
 Action a_t = SoC_ref(t)
@@ -46,7 +46,7 @@ def validation_set(seeds=VAL_SEEDS):
     VAL_CACHE.mkdir(exist_ok=True)
     out = []
     for seed in seeds:
-        sc = S.make_scenario(S.patterned_loads(p.N_TEST_CYCLES, np.random.default_rng(seed)))
+        sc = S.pattern_scenario(p.N_TEST_CYCLES, np.random.default_rng(seed))
         f = VAL_CACHE / f"{seed}_{p.N_TEST_CYCLES}_{sc.loads.sum():.3f}.json"
         if not f.exists():
             s_bar = metrics.soc_value_factor(sc)
@@ -93,7 +93,7 @@ def main():
     rows, steps, t0 = [], 0, time.time()
     log_file = actor_file.with_name(actor_file.stem + "_log.csv")
     for ep in range(args.episodes):
-        sc = S.make_scenario(S.patterned_loads(CYCLES_PER_EPISODE, rng))
+        sc = S.pattern_scenario(CYCLES_PER_EPISODE, rng)
         env = ExcavatorEnv(sc, core)
         base = np.zeros(sc.n_steps) if args.no_baseline else \
             candidates(sc.p_dem)["mdot"][:, 1] * p.DT * p.Q_LHV       # engine-only fuel energy

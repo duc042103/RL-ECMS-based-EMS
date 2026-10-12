@@ -1,10 +1,12 @@
-"""Working-cycle generator: boom lift / hold / lower with a patterned random load.
+"""Working-cycle generator: boom lift / hold / lower under a continuously varying load.
 
 One cycle = hold at bottom (digging) -> lift (0.13 m/s) -> hold at top (dumping)
 -> lower (0.1 m/s, no regeneration). Speeds are the same in every cycle; only the
 load mass changes. The load is periodic with strong cycle-to-cycle variation:
-m_k = 600 + 200 sin(2 pi k / P + phi) + U(-100, 100) kg, P = 3-5 cycles, clipped to [400, 800] kg.
-The test scenario repeats one such 50-cycle set 4 times (200 cycles).
+The load m(t) changes continuously in time, also within a cycle (periodic trend of 3-5 cycles
+plus smooth random variation with periods of 2-15 s, softly saturated into 400-800 kg). The
+load stays on the boom during the whole cycle. The test scenario repeats one 50-cycle set
+4 times (200 cycles).
 """
 from dataclasses import dataclass
 
@@ -16,11 +18,11 @@ PHASE_HOLD_BOTTOM, PHASE_LIFT, PHASE_HOLD_TOP, PHASE_LOWER = 0, 1, 2, 3
 
 
 def _trapezoid(n_steps, v):
-    """Cylinder speed and acceleration (step midpoints) for a trapezoidal profile."""
+    """Cylinder speed and acceleration (step midpoints): constant speed with raised-cosine ramps."""
     t = (np.arange(n_steps) + 0.5) * p.DT
-    t_end = n_steps * p.DT
-    vel = v * np.clip(np.minimum(t, t_end - t) / p.T_RAMP, 0.0, 1.0)
-    acc = np.where(t < p.T_RAMP, v / p.T_RAMP, np.where(t > t_end - p.T_RAMP, -v / p.T_RAMP, 0.0))
+    tau = np.clip(np.minimum(t, n_steps * p.DT - t) / p.T_RAMP, 0.0, 1.0)
+    vel = v * 0.5 * (1.0 - np.cos(np.pi * tau))
+    acc = v * np.pi / (2 * p.T_RAMP) * np.sin(np.pi * tau) * np.where(t < n_steps * p.DT / 2, 1.0, -1.0)
     return vel, acc
 
 
@@ -32,24 +34,30 @@ N_CYCLE = N_HOLD_BOTTOM + N_LIFT + N_HOLD_TOP + N_LOWER
 
 
 def cycle_demand(load):
-    """Power demand at the power-coupler output (W) over one cycle, and the phase index."""
-    to_coupler = 1.0 / (p.ETA_CVT * p.ETA_CPL)
+    """Power demand at the power-coupler output (W) over one cycle, and the phase index.
 
-    # holds: pump at standby pressure / leakage flow
-    p_hold = (p.P_STANDBY * p.Q_STANDBY / p.ETA_PUMP + p.P_PUMP_NOLOAD) * to_coupler
+    `load` is the load mass (kg), either one value for the cycle or one value per time step.
+    """
+    load = np.broadcast_to(np.asarray(load, dtype=float), (N_CYCLE,))
+    to_coupler = 1.0 / (p.ETA_CVT * p.ETA_CPL)
+    i1, i2, i3 = N_HOLD_BOTTOM, N_HOLD_BOTTOM + N_LIFT, N_HOLD_BOTTOM + N_LIFT + N_HOLD_TOP
+    demand = np.empty(N_CYCLE)
+
+    # holds: load kept on the boom; the pump makes up the leakage at the holding pressure
+    hold = np.r_[0:i1, i2:i3]
+    p_holding = (p.M_STRUCT + p.R_LOAD * load[hold]) * p.G / p.A_CAP
+    demand[hold] = (p_holding * p.Q_LEAK_HOLD / p.ETA_PUMP + p.P_PUMP_NOLOAD) * to_coupler
 
     # lift: cap side fed by the pump, rod side to tank
     v, a = _trapezoid(N_LIFT, p.V_UP)
-    force = (p.M_STRUCT + p.R_LOAD * load) * (p.G + a) + p.F_FRIC
+    force = (p.M_STRUCT + p.R_LOAD * load[i1:i2]) * (p.G + a) + p.F_FRIC
     p_cap = (force + p.P_TANK * p.A_ROD) / p.A_CAP + p.DP_VALVE
-    p_lift = (p_cap * p.A_CAP * v / p.ETA_PUMP + p.P_PUMP_NOLOAD) * to_coupler
+    demand[i1:i2] = (p_cap * p.A_CAP * v / p.ETA_PUMP + p.P_PUMP_NOLOAD) * to_coupler
 
-    # lower: gravity-driven, meter-out throttled; pump only fills the rod side
+    # lower: gravity-driven, meter-out throttled (no regeneration); pump only fills the rod side
     v, _ = _trapezoid(N_LOWER, p.V_DOWN)
-    p_lower = (p.P_ROD_LOWER * p.A_ROD * v / p.ETA_PUMP + p.P_PUMP_NOLOAD) * to_coupler
+    demand[i3:] = (p.P_ROD_LOWER * p.A_ROD * v / p.ETA_PUMP + p.P_PUMP_NOLOAD) * to_coupler
 
-    demand = np.concatenate([
-        np.full(N_HOLD_BOTTOM, p_hold), p_lift, np.full(N_HOLD_TOP, p_hold), p_lower])
     phase = np.concatenate([
         np.full(N_HOLD_BOTTOM, PHASE_HOLD_BOTTOM), np.full(N_LIFT, PHASE_LIFT),
         np.full(N_HOLD_TOP, PHASE_HOLD_TOP), np.full(N_LOWER, PHASE_LOWER)])
@@ -58,11 +66,12 @@ def cycle_demand(load):
 
 @dataclass
 class Scenario:
-    loads: np.ndarray       # kg, one per cycle
+    loads: np.ndarray       # kg, mean load of each cycle
     p_dem: np.ndarray       # W, per time step
     cycle: np.ndarray       # cycle index per time step
     phase: np.ndarray       # phase index per time step
     p_dem_avg: np.ndarray   # W, moving average of P_dem over the previous cycle length
+    load_t: np.ndarray = None   # kg, load per time step
 
     @property
     def n_steps(self):
@@ -81,13 +90,16 @@ def moving_average(x, window):
     return (c[idx] - c[lo]) / (idx - lo)
 
 
-def make_scenario(loads):
+def make_scenario(loads, per_step=False):
+    """Scenario from one load per cycle, or (per_step=True) one load per time step."""
     loads = np.asarray(loads, dtype=float)
-    parts = [cycle_demand(m) for m in loads]
+    load_t = loads if per_step else np.repeat(loads, N_CYCLE)
+    per_cycle = load_t.reshape(-1, N_CYCLE)
+    parts = [cycle_demand(m) for m in per_cycle]
     p_dem = np.concatenate([d for d, _ in parts])
     phase = np.concatenate([ph for _, ph in parts])
-    cycle = np.repeat(np.arange(len(loads)), N_CYCLE)
-    return Scenario(loads, p_dem, cycle, phase, moving_average(p_dem, N_CYCLE))
+    cycle = np.repeat(np.arange(len(per_cycle)), N_CYCLE)
+    return Scenario(per_cycle.mean(axis=1), p_dem, cycle, phase, moving_average(p_dem, N_CYCLE), load_t)
 
 
 def random_loads(n_cycles, rng):
@@ -124,11 +136,31 @@ def repeated_set_loads(n_cycles, rng):
     return np.resize(periodic_loads(p.LOAD_SET_CYCLES, rng), n_cycles)
 
 
-patterned_loads = repeated_set_loads  # load pattern used for training, validation and test
+def continuous_loads(n_cycles, rng):
+    """Load per time step: a periodic 50-cycle set (trend + smooth noise, soft-saturated), repeated."""
+    n_set = p.LOAD_SET_CYCLES * N_CYCLE
+    t = np.arange(n_set) * p.DT
+    T = n_set * p.DT
+    n_per = int(rng.integers(p.LOAD_SET_CYCLES // p.LOAD_PERIOD_MAX, p.LOAD_SET_CYCLES // p.LOAD_PERIOD_MIN + 1))
+    trend = p.LOAD_TREND_AMPL * np.sin(2 * np.pi * n_per * t / T + rng.uniform(0, 2 * np.pi))
+    j = np.arange(int(np.ceil(T / p.LOAD_NOISE_TMAX)), int(T / p.LOAD_NOISE_TMIN) + 1)   # harmonics of T
+    amp, ph = rng.standard_normal(len(j)), rng.uniform(0, 2 * np.pi, len(j))
+    noise = np.zeros(n_set)
+    for a_j, j_j, ph_j in zip(amp, j, ph):
+        noise += a_j * np.sin(2 * np.pi * j_j * t / T + ph_j)
+    noise *= p.LOAD_NOISE_STD / noise.std()
+    half = (p.LOAD_MAX - p.LOAD_MIN) / 2
+    m = p.LOAD_MEAN + half * np.tanh((trend + noise) / half)
+    return np.resize(m, n_cycles * N_CYCLE)
+
+
+def pattern_scenario(n_cycles, rng):
+    """Scenario with the current load pattern (used for training, validation and test)."""
+    return make_scenario(continuous_loads(n_cycles, rng), per_step=True)
 
 
 def test_scenario():
-    return make_scenario(patterned_loads(p.N_TEST_CYCLES, np.random.default_rng(p.TEST_SEED)))
+    return pattern_scenario(p.N_TEST_CYCLES, np.random.default_rng(p.TEST_SEED))
 
 
 def constant_scenario(load, n_cycles=p.N_TUNE_CYCLES):

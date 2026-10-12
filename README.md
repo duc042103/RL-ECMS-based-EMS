@@ -48,12 +48,13 @@ validation scenarios). `results/variants/` keeps the nine DDPG training configur
 were compared on the validation scenarios. `results/archive_iid12/` keeps the first study
 (12 cycles, independent random load per cycle).
 
-> **In progress:** the load generator is now periodic with strong cycle-to-cycle variation
-> (`600 + 200 sin(2 pi k / P + phi) + U(-100, 100)` kg, P = 3-5 cycles, one 50-cycle set repeated 4 times; see
-> `results/figures/load_profile_test.png`, `scripts/plot_load.py`). DDPG variants in
-> `results/variants/` hold DDPG variants trained for the 50-cycle set repeated 4 times (200 cycles);
-> the test evaluation is pending. The results below are from
-> the block-load study (same load for 8-12 cycles, `results/archive_block80/`).
+> **In progress:** the load now varies continuously in time, also within a cycle
+> (periodic trend of 3-5 cycles + smooth random variation with periods of 2-15 s, softly
+> saturated into 400-800 kg; one periodic 50-cycle set repeated 4 times = 200 cycles). The load
+> stays on the boom during holds (the pump makes up leakage at holding pressure) and the speed
+> ramps are smooth (raised cosine, 0.6 s). Preview: `results/figures/load_profile_test.png`
+> (`scripts/plot_load.py`). Retuning, training and the test evaluation wait for approval of this
+> profile. The results below are from the block-load study (`results/archive_block80/`).
 
 ## Results (test scenario, 80 cycles, block load)
 
