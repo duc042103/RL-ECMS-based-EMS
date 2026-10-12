@@ -71,7 +71,9 @@ def fig3():
         ax1.plot(k, eps, color=COLOR[n], ls=LINESTYLE[n], lw=1.2, marker=MARKER[n], ms=4,
                  mfc="white", mew=1.0, label=n, zorder=3 if n == "RL-ECMS" else 2)
     ax1.axhline(0, color=INK2, lw=0.6)
-    ax1.text(0.6, 0, "DP", va="bottom", ha="left", fontsize=6.5, color=INK2)
+    ax1.text(k[-1] + 0.5, 0.03, "DP", va="bottom", ha="right", fontsize=6.5, color=INK2)
+    top = max(float(r[f"eps_{n}_pct"]) for r in rows for n in STRATS)
+    ax1.set_ylim(min(-0.3, ax1.get_ylim()[0]), top * 1.32)
     ax1.set_xlabel("Working cycle $k$")
     ax1.set_ylabel(r"$\varepsilon_k$ (%)")
     ax1.set_xticks(k)
@@ -98,7 +100,7 @@ def ice_map(ax):
     t = np.linspace(0.5, 32, 200)
     N, T = np.meshgrid(n, t)
     eta = np.where(T <= c.eng_torque_max(N), c.eng_efficiency(T, N) * 100, np.nan)
-    cs = ax.contour(N, T, eta, levels=[15, 20, 24, 27, 29, 30, 30.5], colors="#9a998f", linewidths=0.5)
+    cs = ax.contour(N, T, eta, levels=[15, 20, 24, 27, 29, 30], colors="#9a998f", linewidths=0.5)
     ax.clabel(cs, fmt="%g", fontsize=5.5, inline_spacing=1)
     ax.plot(n, c.eng_torque_max(n), color=INK2, lw=0.9)
     ax.set_xlim(1100, 3100)
@@ -117,13 +119,13 @@ def emg_map(ax):
     ax.plot(n, -c.emg_torque_max(n), color=INK2, lw=0.9)
     ax.axhline(0, color=GRID, lw=0.5)
     ax.set_xlim(0, 6200)
-    ax.set_ylim(-18, 18)
+    ax.set_ylim(-23, 18)
 
 
 def fig4():
     logs, _ = load_logs()
-    fig, axes = plt.subplots(2, 3, figsize=(17.0 * CM, 9.6 * CM), sharex="row", sharey="row",
-                             gridspec_kw=dict(hspace=0.42, wspace=0.08))
+    fig, axes = plt.subplots(2, 3, figsize=(17.0 * CM, 10.4 * CM), sharex="row", sharey="row",
+                             gridspec_kw=dict(hspace=0.62, wspace=0.08))
     for j, name in enumerate(STRATS):
         lg = logs[name]
         mode = lg["mode"].astype(int)
@@ -145,9 +147,9 @@ def fig4():
         bubbles(ax, lg["n_m"][eng], lg["t_m"][eng], np.ones(eng.sum()), COLOR[name], MARKER[name], 50, 0.3)
         pm, pb = lg["p_emg"][eng], lg["p_bat"][eng]
         mot, gen = pm > 0, pm < 0
-        eta_m = pm[mot].sum() / pb[mot].sum() * 100 if mot.any() else np.nan
-        eta_g = pb[gen].sum() / pm[gen].sum() * 100 if gen.any() else np.nan
-        ax.text(0.97, 0.05, rf"$\bar\eta_{{mot}}$ = {eta_m:.1f} %, $\bar\eta_{{gen}}$ = {eta_g:.1f} %",
+        eta_m = f"{pm[mot].sum() / pb[mot].sum() * 100:.1f} %" if mot.any() else "–"
+        eta_g = f"{pb[gen].sum() / pm[gen].sum() * 100:.1f} %" if gen.any() else "–"
+        ax.text(0.97, 0.02, rf"$\bar\eta_{{mot}}$ = {eta_m},  $\bar\eta_{{gen}}$ = {eta_g}",
                 transform=ax.transAxes, ha="right", va="bottom", fontsize=6.5,
                 bbox=dict(fc="white", ec="none", pad=1))
     axes[0, 0].set_ylabel("ICE torque (Nm)")
@@ -155,8 +157,9 @@ def fig4():
     for j in range(3):
         axes[0, j].set_xlabel("ICE speed (rpm)")
         axes[1, j].set_xlabel("EMG speed (rpm)")
-    fig.text(0.5, 0.505, "(a) ICE", ha="center", fontsize=8)
-    fig.text(0.5, -0.03, "(b) EMG", ha="center", fontsize=8)
+    for row, label in ((0, "(a) ICE"), (1, "(b) EMG")):
+        axes[row, 1].text(0.5, -0.36, label, transform=axes[row, 1].transAxes, ha="center", va="top",
+                          fontsize=8.5)
     for ax in axes.ravel():
         ax.spines[["top", "right"]].set_visible(False)
     save(fig, "Fig4_operating_points")
