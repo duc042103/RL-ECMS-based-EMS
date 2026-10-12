@@ -49,9 +49,10 @@ were compared on the validation scenarios. `results/archive_iid12/` keeps the fi
 (12 cycles, independent random load per cycle).
 
 > **In progress:** the load generator is now periodic with strong cycle-to-cycle variation
-> (`600 + 170 sin(2 pi k / P + phi) + U(-60, 60)` kg, P = 5-8 cycles; see
-> `results/figures/load_profile_test.png`). DDPG variants for it are in `results/variants/`;
-> the test evaluation waits for the load profile to be approved. The results below are from
+> (`600 + 200 sin(2 pi k / P + phi) + U(-100, 100)` kg, P = 3-5 cycles; see
+> `results/figures/load_profile_test.png`, `scripts/plot_load.py`). DDPG variants in
+> `results/variants/` were trained for the earlier P = 5-8 setting and will be retrained once the
+> profile is approved. The results below are from
 > the block-load study (same load for 8-12 cycles, `results/archive_block80/`).
 
 ## Results (test scenario, 80 cycles, block load)

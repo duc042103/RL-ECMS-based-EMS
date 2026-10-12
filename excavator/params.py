@@ -34,9 +34,9 @@ LOAD_MIN_JUMP = 150.0         # kg, minimum change of level between blocks
 # periodic load (current study, user decision): periodic trend + strong cycle-to-cycle variation
 #   m_k = 600 + A sin(2 pi k / P + phi) + U(-noise, noise), clipped to [400, 800] kg
 LOAD_MEAN = 600.0             # kg, centre of the periodic trend
-LOAD_AMPL = 170.0             # kg, amplitude of the periodic trend (ASSUMED)
-LOAD_NOISE = 60.0             # kg, random variation added to every cycle (ASSUMED)
-LOAD_PERIOD_MIN, LOAD_PERIOD_MAX = 5, 8   # cycles per load period, drawn per scenario (ASSUMED)
+LOAD_AMPL = 200.0             # kg, amplitude of the periodic trend (user: fast, strong variation)
+LOAD_NOISE = 100.0            # kg, random variation added to every cycle (user: fast, strong variation)
+LOAD_PERIOD_MIN, LOAD_PERIOD_MAX = 3, 5   # cycles per load period, drawn per scenario (user: fast variation)
 
 # ---------------------------------------------------------------- boom cylinder / load
 BORE = 0.050                  # m (GIVEN)

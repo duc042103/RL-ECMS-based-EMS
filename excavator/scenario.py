@@ -3,7 +3,7 @@
 One cycle = hold at bottom (digging) -> lift (0.13 m/s) -> hold at top (dumping)
 -> lower (0.1 m/s, no regeneration). Speeds are the same in every cycle; only the
 load mass changes. The load is periodic with strong cycle-to-cycle variation:
-m_k = 600 + 170 sin(2 pi k / P + phi) + U(-60, 60) kg, P = 5-8 cycles, clipped to [400, 800] kg.
+m_k = 600 + 200 sin(2 pi k / P + phi) + U(-100, 100) kg, P = 3-5 cycles, clipped to [400, 800] kg.
 """
 from dataclasses import dataclass
 
@@ -109,7 +109,7 @@ def block_loads(n_cycles, rng):
 
 
 def periodic_loads(n_cycles, rng):
-    """Periodic trend (period 5-8 cycles, random phase) plus strong random variation per cycle."""
+    """Periodic trend (period 3-5 cycles, random phase) plus strong random variation per cycle."""
     period = int(rng.integers(p.LOAD_PERIOD_MIN, p.LOAD_PERIOD_MAX + 1))
     phase = rng.uniform(0.0, 2 * np.pi)
     k = np.arange(n_cycles)
