@@ -24,6 +24,7 @@ MARKER = {"ECMS": "s", "A-ECMS": "^", "RL-ECMS": "o"}
 LINESTYLE = {"ECMS": (0, (4, 2)), "A-ECMS": (0, (6, 2, 1.5, 2)), "RL-ECMS": "-"}
 INK, INK2, GRID = "#0b0b0b", "#52514e", "#d9d8d4"
 CM = 1 / 2.54
+FIG4_ASPECT = 1125 / 491      # width / height of the slot reserved for Fig. 4 in the paper
 
 plt.rcParams.update({
     "font.family": "STIXGeneral", "mathtext.fontset": "stix", "font.size": 8,
@@ -35,10 +36,14 @@ plt.rcParams.update({
 })
 
 
-def save(fig, name):
+def save(fig, name, tight=True):
+    """PNG + SVG. tight=False keeps the exact figure size (fixed aspect ratio for the paper layout)."""
     FIG.mkdir(parents=True, exist_ok=True)
     for ext in ("png", "svg"):
-        fig.savefig(FIG / f"{name}.{ext}", bbox_inches="tight", pad_inches=0.02)
+        if tight:
+            fig.savefig(FIG / f"{name}.{ext}", bbox_inches="tight", pad_inches=0.02)
+        else:
+            fig.savefig(FIG / f"{name}.{ext}")
     plt.close(fig)
 
 
@@ -110,6 +115,7 @@ def ice_map(ax):
     ax.plot(n, c.eng_torque_max(n), color=INK2, lw=0.9)
     ax.set_xlim(1100, 3100)
     ax.set_ylim(0, 33)
+    ax.set_yticks([0, 10, 20, 30])
 
 
 def emg_map(ax):
@@ -125,12 +131,14 @@ def emg_map(ax):
     ax.axhline(0, color=GRID, lw=0.5)
     ax.set_xlim(0, 6200)
     ax.set_ylim(-23, 18)
+    ax.set_yticks([-20, -10, 0, 10])
 
 
 def fig4():
     logs, _ = load_logs()
-    fig, axes = plt.subplots(2, 3, figsize=(17.0 * CM, 10.4 * CM), sharex="row", sharey="row",
-                             gridspec_kw=dict(hspace=0.62, wspace=0.08))
+    width = 17.0 * CM
+    fig, axes = plt.subplots(2, 3, figsize=(width, width / FIG4_ASPECT), sharex="row", sharey="row")
+    fig.subplots_adjust(left=0.065, right=0.985, top=0.915, bottom=0.185, hspace=0.86, wspace=0.2)
     for j, name in enumerate(STRATS):
         lg = logs[name]
         mode = lg["mode"].astype(int)
@@ -163,11 +171,11 @@ def fig4():
         axes[0, j].set_xlabel("ICE speed (rpm)")
         axes[1, j].set_xlabel("EMG speed (rpm)")
     for row, label in ((0, "(a) ICE"), (1, "(b) EMG")):
-        axes[row, 1].text(0.5, -0.36, label, transform=axes[row, 1].transAxes, ha="center", va="top",
-                          fontsize=8.5)
+        axes[row, 1].text(0.5, -0.47, label, transform=axes[row, 1].transAxes, ha="center", va="top",
+                          fontsize=8)
     for ax in axes.ravel():
         ax.spines[["top", "right"]].set_visible(False)
-    save(fig, "Fig4_operating_points")
+    save(fig, "Fig4_operating_points", tight=False)
 
 
 if __name__ == "__main__":
