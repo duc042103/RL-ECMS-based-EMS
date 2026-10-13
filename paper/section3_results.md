@@ -10,7 +10,7 @@ also within a cycle (periodic trend of 3–5 cycles plus smooth random variation
 
 > All components of the hybrid excavator are modeled in Python. The test scenario consists of 200 working cycles (about 47 min) in which the load varies continuously between 400 and 800 kg, also during lifting, while the lifting and lowering speeds are kept constant. ECMS and A-ECMS are tuned at 600 kg. The consumed energy includes the fuel energy and the equivalent energy of the SoC change, converted with the marginal fuel cost of battery energy obtained from DP.
 
-## Table 1. Comparison of energy consumption under continuously varying loads
+## Table 1. Energy consumption over 200 working cycles under varying loads
 
 | Criteria | ECMS | A-ECMS [2] | RL-ECMS | DP |
 |---|---|---|---|---|
@@ -18,11 +18,11 @@ also within a cycle (periodic trend of 3–5 cycles plus smooth random variation
 | Reduction by RL-ECMS (%) | 0.80 | 0.26 | – | – |
 | Ratio to DP (%) | 98.73 | 99.27 | 99.53 | 100 |
 
-## Discussion (2 short paragraphs)
+## Discussion (2 paragraphs; same text as `captions_and_paragraphs.md`)
 
-> Table 1 and Fig. 3 compare the energy consumption of the strategies over this scenario. With a fixed equivalence factor, ECMS cannot sustain the SoC: the battery reaches its lower limit at cycle 36, after which the EMG can no longer assist heavy lifts and the deviation from DP rises to 2.3 % on average, and up to 3.4 %, in the heavy-load cycles. A-ECMS [2] keeps the SoC near its reference with a mean deviation of 0.75 %, but its equivalence factor tuned at 600 kg restricts EMG assistance when the load is light. RL-ECMS deviates less than A-ECMS in 144 of the 200 cycles and lowers the mean deviation to 0.49 %, reducing total energy consumption by 0.80 % and 0.26 % compared with ECMS and A-ECMS and reaching 99.53 % of the DP optimum.
+> Table 1 compares the total consumed energy, which includes the equivalent energy of the SoC change. ECMS burns the least fuel only because it depletes the battery from 0.60 to its lower limit, while A-ECMS settles at a SoC of 0.58, below its reference. RL-ECMS keeps the battery charge-sustaining and achieves the lowest consumption among the online strategies.
 >
-> Fig. 4 explains this improvement. When lifting light loads, the agent lowers the SoC reference, so the EMG supplies 1.00 kW on average, close to the 0.93 kW of DP, compared with 0.15 kW for A-ECMS, and the battery is recharged in the following hold and lowering phases. RL-ECMS therefore raises the mean ICE efficiency from 23.8 % (ECMS) and 25.2 % (A-ECMS) to 25.7 % and the mean EMG motoring efficiency from 88.7 % and 88.2 % to 90.6 %, while keeping the battery charge-sustaining.
+> Figs. 3 and 4 explain these differences. Once ECMS depletes the battery at cycle 36, the EMG can no longer assist lifting, so its deviation from DP grows with the load and the engine alone covers a wide speed range. A-ECMS and RL-ECMS instead charge the battery near the efficient region of the engine during holding and lowering and use this energy for lifting. The advantage of RL-ECMS comes mainly from light-load cycles, where the equivalence factor of A-ECMS tuned at 600 kg restricts EMG assistance: the agent lowers the SoC reference so that the EMG supplies 1.00 kW on average during lifting, close to the 0.93 kW of DP and compared with 0.15 kW for A-ECMS. This reduces the mean deviation from DP from 0.75 % to 0.49 % and moves the operating points of both the ICE and the EMG toward higher efficiency. The negative deviations in the first cycles arise because DP, knowing the whole load sequence, charges the battery in advance.
 
 ## Values for the placeholders
 

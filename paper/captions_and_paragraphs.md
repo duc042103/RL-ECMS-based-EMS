@@ -16,7 +16,9 @@ Fig. 2 illustrates the proposed RL-ECMS framework. At each time step, the DDPG a
 
 ---
 
-**Table 1. Comparison of energy consumption over 200 working cycles under continuously varying loads.**
+## Results (2 paragraphs)
+
+**Table 1. Energy consumption over 200 working cycles under varying loads.**
 
 | Criteria | ECMS | A-ECMS [2] | RL-ECMS | DP |
 |---|---|---|---|---|
@@ -24,16 +26,10 @@ Fig. 2 illustrates the proposed RL-ECMS framework. At each time step, the DDPG a
 | Reduction by RL-ECMS (%) | 0.80 | 0.26 | – | – |
 | Ratio to DP (%) | 98.73 | 99.27 | 99.53 | 100 |
 
-Table 1 summarizes the total energy consumption, which includes the fuel energy and the equivalent energy of the SoC change. ECMS burns the least fuel only because it depletes the battery from 0.60 to 0.40; once this deficit is included, it has the highest consumption of 21.16 MJ. A-ECMS sustains the SoC near 0.58 and consumes 21.04 MJ. RL-ECMS consumes 20.99 MJ, which is 0.80 % and 0.26 % less than ECMS and A-ECMS and corresponds to 99.53 % of the DP optimum.
+**Fig. 3. Load of each cycle (top) and per-cycle energy deviation from DP (bottom).**
 
----
+**Fig. 4. Operating points on the efficiency maps of (a) the ICE and (b) the EMG; marker area is proportional to the time spent.**
 
-**Fig. 3. Per-cycle energy deviation from DP over 200 working cycles: mean load of each cycle (top) and deviation $\varepsilon_k$ of ECMS, A-ECMS and RL-ECMS (bottom).**
-
-Fig. 3 shows the energy deviation of each cycle from DP. The negative values in the first cycles occur because DP, knowing the whole load sequence, charges the battery during these cycles. With a fixed equivalence factor, ECMS depletes the battery to its lower limit at cycle 36; afterwards, its deviation follows the load and reaches 2.3 % on average and up to 3.4 % in heavy-load cycles, where the EMG can no longer assist lifting. A-ECMS sustains the SoC with a mean deviation of 0.75 %, whereas RL-ECMS deviates less than A-ECMS in 144 of the 200 cycles, with a mean deviation of 0.49 %. The improvement is concentrated in light-load cycles (0.18 % versus 0.80 %), where the equivalence factor of A-ECMS tuned at 600 kg restricts EMG assistance.
-
----
-
-**Fig. 4. Operating points of ECMS, A-ECMS and RL-ECMS on the efficiency maps of (a) the ICE and (b) the EMG. The marker area is proportional to the time spent at each point.**
-
-Fig. 4 explains these differences. ECMS never charges the battery, so during holding and lowering the engine runs alone at low torque, where its efficiency is below 15 %, and once the battery is depleted it supplies heavy lifts alone at speeds up to 2300 rpm. A-ECMS and RL-ECMS instead use the low-demand phases to charge the battery near the efficient region of the engine at 1200 rpm and use this energy to assist lifting. RL-ECMS does so more effectively: when lifting light loads, the agent lowers the SoC reference so that the EMG supplies 1.00 kW on average, close to the 0.93 kW of DP and compared with 0.15 kW for A-ECMS. As a result, the mean ICE efficiency increases from 23.8 % (ECMS) and 25.2 % (A-ECMS) to 25.7 %, and the mean EMG motoring efficiency from 88.7 % and 88.2 % to 90.6 %.
+> Table 1 compares the total consumed energy, which includes the equivalent energy of the SoC change. ECMS burns the least fuel only because it depletes the battery from 0.60 to its lower limit, while A-ECMS settles at a SoC of 0.58, below its reference. RL-ECMS keeps the battery charge-sustaining and achieves the lowest consumption among the online strategies.
+>
+> Figs. 3 and 4 explain these differences. Once ECMS depletes the battery at cycle 36, the EMG can no longer assist lifting, so its deviation from DP grows with the load and the engine alone covers a wide speed range. A-ECMS and RL-ECMS instead charge the battery near the efficient region of the engine during holding and lowering and use this energy for lifting. The advantage of RL-ECMS comes mainly from light-load cycles, where the equivalence factor of A-ECMS tuned at 600 kg restricts EMG assistance: the agent lowers the SoC reference so that the EMG supplies 1.00 kW on average during lifting, close to the 0.93 kW of DP and compared with 0.15 kW for A-ECMS. This reduces the mean deviation from DP from 0.75 % to 0.49 % and moves the operating points of both the ICE and the EMG toward higher efficiency. The negative deviations in the first cycles arise because DP, knowing the whole load sequence, charges the battery in advance.
