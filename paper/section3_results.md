@@ -14,7 +14,7 @@ also within a cycle (periodic trend of 3–5 cycles plus smooth random variation
 
 | Criteria | ECMS | A-ECMS [2] | RL-ECMS | DP |
 |---|---|---|---|---|
-| Total consumed energy (kJ) | 21155.9 | 21041.5 | 20987.6 | 20888.0 |
+| Total consumed energy (MJ) | 21.16 | 21.04 | 20.99 | 20.89 |
 | Reduction by RL-ECMS (%) | 0.80 | 0.26 | – | – |
 | Ratio to DP (%) | 98.73 | 99.27 | 99.53 | 100 |
 

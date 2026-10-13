@@ -14,6 +14,20 @@ from ems.strategies import RESULTS, load_agent, load_tuning, run_all   # noqa: E
 NAMES = ("ECMS", "A-ECMS", "RL-ECMS", "DP")
 
 
+def write_table(summary):
+    """Table 1 (total consumed energy in MJ) from the summary dictionary."""
+    E, r, q = summary["E_tot_kJ"], summary["reduction_by_rl_pct"], summary["ratio_to_dp_pct"]
+    table = [
+        "| Criteria | ECMS | A-ECMS [2] | RL-ECMS | DP |",
+        "|---|---|---|---|---|",
+        "| Total consumed energy (MJ) | " + " | ".join(f"{E[n] / 1e3:.2f}" for n in NAMES) + " |",
+        f"| Reduction by RL-ECMS (%) | {r['ECMS']:.2f} | {r['A-ECMS']:.2f} | – | – |",
+        "| Ratio to DP (%) | " + " | ".join(f"{q[n]:.2f}" for n in NAMES[:3]) + " | 100 |",
+    ]
+    (RESULTS / "table1.md").write_text("\n".join(table) + "\n")
+    print("\n".join(table))
+
+
 def main():
     sc = S.test_scenario()
     s_bar = metrics.soc_value_factor(sc)
@@ -47,18 +61,12 @@ def main():
             w.writerow([k + 1, round(sc.loads[k], 1)] + [round(ce[n]["E"][k] / 1e3, 3) for n in NAMES]
                        + [round(eps[n][k], 3) for n in NAMES[:3]] + [round(ce[n]["soc_end"][k], 4) for n in NAMES])
 
-    r, q = summary["reduction_by_rl_pct"], summary["ratio_to_dp_pct"]
-    table = [
-        "| Criteria | ECMS | A-ECMS [2] | RL-ECMS | DP |",
-        "|---|---|---|---|---|",
-        "| Total consumed energy (kJ) | " + " | ".join(f"{E[n] / 1e3:.1f}" for n in NAMES) + " |",
-        f"| Reduction by RL-ECMS (%) | {r['ECMS']:.2f} | {r['A-ECMS']:.2f} | – | – |",
-        "| Ratio to DP (%) | " + " | ".join(f"{q[n]:.2f}" for n in NAMES[:3]) + " | 100 |",
-    ]
-    (RESULTS / "table1.md").write_text("\n".join(table) + "\n")
-    print("\n".join(table))
+    write_table(summary)
     print(json.dumps({k: summary[k] for k in ("fuel_g", "soc_end", "max_eps_pct", "mean_abs_eps_pct")}, indent=1))
 
 
 if __name__ == "__main__":
-    main()
+    if "--table-only" in sys.argv:          # rewrite Table 1 from results/summary.json
+        write_table(json.loads((RESULTS / "summary.json").read_text()))
+    else:
+        main()
